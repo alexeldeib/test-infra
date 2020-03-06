@@ -587,10 +587,15 @@ func nodeTest(nodeArgs []string, testArgs, nodeTestArgs, project, zone string) e
 func kubemarkUp(dump string, o options, deploy deployer) error {
 	// Stop previously running kubemark cluster (if any).
 	if err := control.XMLWrap(&suite, "Kubemark TearDown Previous", func() error {
-		return control.FinishRunning(exec.Command("./test/kubemark/stop-kubemark.sh"))
+		if err := control.FinishRunning(exec.Command("./test/kubemark/stop-kubemark.sh")); err != nil {
+			return fmt.Errorf("failed to stop kubemark cluster, err: %v", err)
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
+
+	fmt.Println("finished tearing down kubemark")
 
 	if err := control.XMLWrap(&suite, "IsUp", deploy.IsUp); err != nil {
 		return err
@@ -617,8 +622,7 @@ func kubemarkUp(dump string, o options, deploy deployer) error {
 
 	var masterIP, masterInternalIP []byte
 
-	switch o.deployment {
-	case "gce":
+	if o.deployment == "bash" && o.provider == "gce" {
 		var err error
 		masterIP, err = control.Output(exec.Command(
 			"gcloud", "compute", "addresses", "describe",
@@ -639,7 +643,7 @@ func kubemarkUp(dump string, o options, deploy deployer) error {
 		if err != nil {
 			return fmt.Errorf("failed to get masterInternalIP: %v", err)
 		}
-	case "aks":
+	} else if o.deployment == "aks" {
 		var err error
 		masterIP, err = control.Output(exec.Command(
 			"az", "aks", "show",
