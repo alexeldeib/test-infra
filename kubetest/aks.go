@@ -77,7 +77,7 @@ func newAksDeployer() (*aksDeployer, error) {
 		return nil, fmt.Errorf("error trying to get Azure Client: %v", err)
 	}
 
-	outputDir, err := ioutil.TempDir(os.Getenv("HOME"), "tmp")
+	outputDir, err := ioutil.TempDir(os.Getenv("HOME"), "aks")
 	if err != nil {
 		return nil, fmt.Errorf("error creating tempdir: %v", err)
 	}
