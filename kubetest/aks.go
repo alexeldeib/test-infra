@@ -358,11 +358,11 @@ func newSSHKeypair(bits int) (private, public []byte, err error) {
 }
 
 func installAzureCLI() error {
-	if err := control.FinishRunning(exec.Command("curl", "-sL", "https://packages.microsoft.com/keys/microsoft.asc", "-o", "msft.asc.gpg")); err != nil {
+	if err := control.FinishRunning(exec.Command("curl", "-sL", "https://packages.microsoft.com/keys/microsoft.asc", "-o", "msft.asc")); err != nil {
 		return err
 	}
 
-	if err := control.FinishRunning(exec.Command("gpg", "--no-tty", "-o", "/etc/apt/trusted.gpg.d/microsoft.asc.gpg", "--dearmor", "msft.asc.gpg")); err != nil {
+	if err := control.FinishRunning(exec.Command("gpg", "-o", "/etc/apt/trusted.gpg.d/microsoft.asc.gpg", "--dearmor", "msft.asc")); err != nil {
 		return err
 	}
 
