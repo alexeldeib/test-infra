@@ -362,7 +362,7 @@ func installAzureCLI() error {
 		return err
 	}
 
-	if err := control.FinishRunning(exec.Command("gpg", "-o", "/etc/apt/trusted.gpg.d/microsoft.asc.gpg", "--dearmor", "msft.asc")); err != nil {
+	if err := control.FinishRunning(exec.Command("gpg", "--batch", "--yes", "-o", "/etc/apt/trusted.gpg.d/microsoft.asc.gpg", "--dearmor", "msft.asc")); err != nil {
 		return err
 	}
 
