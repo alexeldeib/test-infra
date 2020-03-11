@@ -139,8 +139,10 @@ func (a *aksDeployer) prepareKubemarkEnv() error {
 		return err
 	}
 
-	if err := installAzureCLI(); err != nil {
-		return err
+	if os.Getenv("INSTALL_AZ_CLI") != "false" {
+		if err := installAzureCLI(); err != nil {
+			return err
+		}
 	}
 
 	if err := os.Setenv("AZURE_CLIENT_ID", a.azureCreds.ClientID); err != nil {
