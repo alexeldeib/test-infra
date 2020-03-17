@@ -174,6 +174,10 @@ func (a *aksDeployer) prepareKubemarkEnv() error {
 		return err
 	}
 
+	if err := os.Setenv("AZURE_SUBSCRIPTION_ID", a.azureCreds.SubscriptionID); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -226,7 +230,7 @@ func (a *aksDeployer) Up() error {
 		return fmt.Errorf("failed to respond to cluster creation: %v", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*15)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*25)
 	defer cancel()
 	if err := future.WaitForCompletionRef(ctx, a.azureClient.managedClustersClient.Client); err != nil {
 		return fmt.Errorf("failed long async cluster creation: %v", err)
