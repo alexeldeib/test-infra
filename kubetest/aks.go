@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -40,21 +41,36 @@ import (
 
 const charset = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
+var aksCustomHeaders = flag.String("aks-custom-headers", "", "comma-separated list of key=value tuples for headers to apply to the cluster creation request.")
+
 type aksDeployer struct {
 	azureCreds       *Creds
 	azureClient      *AzureClient
 	azureEnvironment string
-	templateUrl      string
+	templateURL      string
 	outputDir        string
 	resourceGroup    string
 	resourceName     string
 	location         string
 	k8sVersion       string
+	customHeaders    map[string]string
 }
 
 func newAksDeployer() (*aksDeployer, error) {
 	if err := validateAksFlags(); err != nil {
 		return nil, err
+	}
+
+	customHeaders := map[string]string{}
+	if *aksCustomHeaders != "" {
+		tokens := strings.Split(*aksCustomHeaders, ",")
+		for _, token := range tokens {
+			parts := strings.Split(token, "=")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("incorrectly formatted custom header, use format key=val[,key2=val2]: %s", token)
+			}
+			customHeaders[parts[0]] = parts[1]
+		}
 	}
 
 	creds, err := getAzCredentials()
@@ -86,12 +102,13 @@ func newAksDeployer() (*aksDeployer, error) {
 		azureCreds:       creds,
 		azureClient:      client,
 		azureEnvironment: *aksAzureEnv,
-		templateUrl:      *aksTemplateURL,
+		templateURL:      *aksTemplateURL,
 		outputDir:        outputDir,
 		resourceGroup:    *aksResourceGroupName,
 		resourceName:     *aksResourceName,
 		location:         *aksLocation,
 		k8sVersion:       *aksOrchestratorRelease,
+		customHeaders:    customHeaders,
 	}
 
 	if err := a.dockerLogin(); err != nil {
@@ -162,9 +179,9 @@ func (a *aksDeployer) prepareKubemarkEnv() error {
 
 func (a *aksDeployer) Up() error {
 	log.Printf("Creating AKS cluster %v in resource group %v", a.resourceName, a.resourceGroup)
-	templateFile, err := downloadFromURL(a.templateUrl, path.Join(a.outputDir, "kubernetes.json"), 2)
+	templateFile, err := downloadFromURL(a.templateURL, path.Join(a.outputDir, "kubernetes.json"), 2)
 	if err != nil {
-		return fmt.Errorf("error downloading AKS cluster template: %v with error %v", a.templateUrl, err)
+		return fmt.Errorf("error downloading AKS cluster template: %v with error %v", a.templateURL, err)
 	}
 
 	template, err := ioutil.ReadFile(templateFile)
@@ -195,9 +212,18 @@ func (a *aksDeployer) Up() error {
 		return fmt.Errorf("could not ensure resource group: %v", err)
 	}
 
-	future, err := a.azureClient.managedClustersClient.CreateOrUpdate(context.Background(), a.resourceGroup, a.resourceName, model)
+	req, err := a.azureClient.managedClustersClient.CreateOrUpdatePreparer(context.Background(), a.resourceGroup, a.resourceName, model)
 	if err != nil {
-		return fmt.Errorf("failed to start cluster creation: %v", err)
+		return fmt.Errorf("failed to prepare cluster creation: %v", err)
+	}
+
+	for key, val := range a.customHeaders {
+		req.Header[key] = []string{val}
+	}
+
+	future, err := a.azureClient.managedClustersClient.CreateOrUpdateSender(req)
+	if err != nil {
+		return fmt.Errorf("failed to respond to cluster creation: %v", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*15)
