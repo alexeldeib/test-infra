@@ -178,6 +178,10 @@ func (a *aksDeployer) prepareKubemarkEnv() error {
 		return err
 	}
 
+	if err := os.Setenv("REGISTRY", imageRegistry); err != nil {
+		return err
+	}
+
 	return nil
 }
 
