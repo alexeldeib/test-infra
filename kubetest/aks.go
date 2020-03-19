@@ -182,11 +182,6 @@ func (a *aksDeployer) prepareKubemarkEnv() error {
 		return err
 	}
 
-	kubeconfigPath := path.Join(a.outputDir, "kubeconfig")
-	if err := os.Setenv("KUBECONFIG", kubeconfigPath); err != nil {
-		return err
-	}
-
 	return nil
 }
 
